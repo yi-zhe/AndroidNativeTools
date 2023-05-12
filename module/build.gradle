@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
 }
+apply from: file(rootProject.file('module.gradle'))
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -34,4 +35,78 @@ android {
 }
 
 dependencies {
+}
+
+import java.nio.file.Files
+import java.nio.file.Paths
+
+def outDir = file("$rootDir/out")
+
+afterEvaluate {
+    android.libraryVariants.forEach { variant ->
+        def variantCapped = variant.name.capitalize()
+        def variantLowered = variant.name.toLowerCase()
+
+        def zipName = "${moduleId}-${moduleVersion}-${variantLowered}.zip"
+        def magiskDir = file("$outDir/magisk_module_$variantLowered")
+
+        task("magiskPrepare${variantCapped}", type: Sync) {
+            dependsOn("assemble$variantCapped")
+
+            def templatePath = "$rootDir/template/magisk_module"
+
+            into magiskDir
+            from(templatePath) {
+                exclude 'module.prop'
+            }
+            from(templatePath) {
+                include 'module.prop'
+                expand([
+                        id         : moduleId,
+                        name       : moduleName,
+                        version    : moduleVersion,
+                        versionCode: moduleVersionCode.toString(),
+                        author     : moduleAuthor,
+                        description: moduleDescription,
+                ])
+            }
+            from("$buildDir/intermediates/stripped_native_libs/$variantLowered/out/lib") {
+                into 'lib'
+            }
+            doLast {
+                def dst = file("$magiskDir/system/bin")
+                dst.mkdirs()
+                fileTree("build/intermediates/cmake/$variant.name/obj/arm64-v8a").visit { f ->
+                    def srcPath = Paths.get("${f.file.absolutePath}")
+                    def dstPath = Paths.get("$dst/${f.getName()}")
+                    Files.copy(srcPath, dstPath)
+                }
+            }
+        }
+
+        task("magiskZip${variantCapped}", type: Zip) {
+            dependsOn("magiskPrepare${variantCapped}")
+            from magiskDir
+            archiveFileName.set(zipName)
+            destinationDirectory.set(outDir)
+        }
+
+        task("magiskPush${variantCapped}", type: Exec) {
+            dependsOn("magiskZip${variantCapped}")
+            workingDir outDir
+            commandLine android.adbExecutable, "push", zipName, "/data/local/tmp/"
+        }
+
+        task("magiskInstall${variantCapped}", type: Exec) {
+            dependsOn("magiskPush${variantCapped}")
+            commandLine android.adbExecutable, "shell", "su", "-c", "magisk --install-module /data/local/tmp/${zipName}"
+        }
+
+        task("magiskInstallAndReboot${variantCapped}", type: Exec) {
+            dependsOn("magiskInstall${variantCapped}")
+            commandLine android.adbExecutable, "shell", "reboot"
+        }
+
+        variant.assembleProvider.get().finalizedBy("magiskZip${variantCapped}")
+    }
 }

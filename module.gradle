@@ -1,0 +1,21 @@
+ext {
+    moduleId = "AndroidNativeTools"
+    moduleName = "Android Native Tools"
+    moduleAuthor = "Liuyang"
+    moduleDescription = "Some useful prebuild tools."
+
+    moduleVersionMajor = 1
+    moduleVersionMinor = 0
+    moduleVersionPatch = 0
+    moduleVersion = "v${moduleVersionMajor}.${moduleVersionMinor}.${moduleVersionPatch}"
+    moduleVersionCode = 100
+
+    moduleProp = [
+            id         : "$moduleId",
+            name       : "${moduleName}",
+            version    : "${moduleVersion}",
+            versionCode: moduleVersionCode,
+            author     : moduleAuthor,
+            description: moduleDescription
+    ]
+}

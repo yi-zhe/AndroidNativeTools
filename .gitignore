@@ -16,4 +16,5 @@ local.properties
 *.iml
 /.idea/
 */build
-
+out/
+template/magisk_module/system/bin/*
