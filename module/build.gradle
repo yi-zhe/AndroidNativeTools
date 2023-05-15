@@ -79,7 +79,11 @@ afterEvaluate {
                 fileTree("build/intermediates/cmake/$variant.name/obj/arm64-v8a").visit { f ->
                     def srcPath = Paths.get("${f.file.absolutePath}")
                     def dstPath = Paths.get("$dst/${f.getName()}")
-                    Files.copy(srcPath, dstPath)
+                    try {
+                        Files.copy(srcPath, dstPath)
+                    } catch (Exception e) {
+                        e.printStackTrace()
+                    }
                 }
             }
         }
